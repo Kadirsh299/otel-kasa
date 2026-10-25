@@ -351,6 +351,12 @@ def init_db():
             print("✅ İlk kurulum tamam")
 
 init_db()
-
+# Veritabanı sıfırlama komutu
+if os.environ.get("RESET_DB") == "1":
+    print("⚠️ Veritabanı sıfırlanıyor...")
+    with app.app_context():
+        db.drop_all()
+        db.create_all()
+    print("✅ Veritabanı sıfırlandı.")
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
