@@ -3,4 +3,3 @@ flask-sqlalchemy
 werkzeug
 openpyxl
 gunicorn
-psycopg2-binary
