@@ -1,0 +1,27 @@
+{% extends "base.html" %}{% block icerik %}
+<div class="kart">
+<h3>📩 Değişiklik Talepleri</h3>
+<div style="overflow-x:auto">
+<table>
+<tr><th>Oda</th><th>Eski</th><th>Yeni</th><th>Sebep</th><th>Personel</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr>
+{% for t in talepler %}
+<tr>
+<td><b>{{ t.oda_no }}</b></td>
+<td>{{ "%.2f"|format(t.eski_tutar) }} TL</td>
+<td><b style="color:#dc2626">{{ "%.2f"|format(t.yeni_tutar) }} TL</b></td>
+<td>{{ t.sebep }}</td>
+<td>{{ t.personel }}</td>
+<td>{{ t.tarih.strftime("%d.%m.%Y %H:%M") }}</td>
+<td>{{ t.durum }}</td>
+<td>
+{% if t.durum == "Bekliyor" %}
+<a href="{{ url_for('talep_karar', tid=t.id, karar='onay') }}" class="btn btn-yesil" style="padding:6px 10px;font-size:12px">✅ Onayla</a>
+<a href="{{ url_for('talep_karar', tid=t.id, karar='red') }}" class="btn btn-kirmizi" style="padding:6px 10px;font-size:12px">❌ Reddet</a>
+{% endif %}
+</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+</div>
+{% endblock %}

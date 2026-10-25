@@ -1,0 +1,40 @@
+{% extends "base.html" %}{% block icerik %}
+<div class="kart">
+<h3>📜 {{ kayit.oda_no }} - Ödeme Geçmişi</h3>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:15px">
+<div style="background:#f0f9ff;padding:15px;border-radius:10px">
+<div style="font-size:12px;color:#64748b">TOPLAM</div>
+<div style="font-size:20px;font-weight:bold">{{ "%.2f"|format(kayit.toplam_tutar) }} TL</div>
+</div>
+<div style="background:#f0fdf4;padding:15px;border-radius:10px">
+<div style="font-size:12px;color:#64748b">ÖDENEN</div>
+<div style="font-size:20px;font-weight:bold;color:#16a34a">{{ "%.2f"|format(kayit.odenen) }} TL</div>
+</div>
+<div style="background:#fef2f2;padding:15px;border-radius:10px">
+<div style="font-size:12px;color:#64748b">KALAN</div>
+<div style="font-size:20px;font-weight:bold;color:#dc2626">{{ "%.2f"|format(kayit.kalan) }} TL</div>
+</div>
+</div>
+<p><b>Müşteri:</b> {{ kayit.musteri_adi or "-" }}</p>
+<p><b>Not:</b> {{ kayit.notlar or "-" }}</p>
+<a href="{{ url_for('borclular') }}" class="btn btn-gri">⬅️ Borçlulara Dön</a>
+</div>
+
+<div class="kart">
+<h3>💳 Yapılan Ödemeler</h3>
+{% if odemeler %}
+<div style="overflow-x:auto">
+<table>
+<tr><th>Tarih</th><th>Tutar</th><th>Tip</th><th>Personel</th><th>Açıklama</th></tr>
+{% for o in odemeler %}
+<tr><td>{{ o.tarih.strftime("%d.%m.%Y %H:%M") }}</td>
+<td><b style="color:#16a34a">+{{ "%.2f"|format(o.tutar) }} TL</b></td>
+<td>{{ o.tip }}</td><td>{{ o.personel }}</td><td>{{ o.aciklama or "-" }}</td></tr>
+{% endfor %}
+</table>
+</div>
+{% else %}
+<p style="color:#64748b">Henüz ödeme yapılmamış.</p>
+{% endif %}
+</div>
+{% endblock %}

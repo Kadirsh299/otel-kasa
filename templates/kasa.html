@@ -1,0 +1,30 @@
+{% extends "base.html" %}{% block icerik %}
+<div class="kart">
+<h3>💰 Kasa Toplama</h3>
+<form method="post" class="form-row" style="align-items:center">
+<input name="ay" value="{{ ay }}" placeholder="2025-01" style="max-width:130px">
+<label style="font-size:13px">USD: <input name="usd" value="{{ usd }}" style="width:80px"></label>
+<label style="font-size:13px">EUR: <input name="eur" value="{{ eur }}" style="width:80px"></label>
+<button class="btn btn-mavi" type="submit">🧮 HESAPLA</button>
+<a href="{{ url_for('kasa_excel', ay=ay) }}" class="btn btn-yesil">📊 Excel İndir</a>
+</form>
+</div>
+
+<div class="kart">
+<h3>📊 {{ ay }} Ayı Raporu</h3>
+<div style="overflow-x:auto">
+<table>
+<tr><th>Ödeme Tipi</th><th>Adet</th><th>Tahsil Edilen</th><th>TL Karşılığı</th></tr>
+<tr><td>🟢 Nakit</td><td>{{ adet.Nakit }}</td><td>{{ "%.2f"|format(toplam.Nakit) }} TL</td><td>{{ "%.2f"|format(toplam.Nakit) }} TL</td></tr>
+<tr><td>💳 Kredi Kartı</td><td>{{ adet["Kredi Kartı"] }}</td><td>{{ "%.2f"|format(toplam["Kredi Kartı"]) }} TL</td><td>{{ "%.2f"|format(toplam["Kredi Kartı"]) }} TL</td></tr>
+<tr><td>🏦 Havale</td><td>{{ adet.Havale }}</td><td>{{ "%.2f"|format(toplam.Havale) }} TL</td><td>{{ "%.2f"|format(toplam.Havale) }} TL</td></tr>
+<tr><td>💵 USD</td><td>{{ adet.USD }}</td><td>{{ "%.2f"|format(toplam.USD) }} $</td><td>{{ "%.2f"|format(toplam.USD * usd) }} TL</td></tr>
+<tr><td>💶 EUR</td><td>{{ adet.EUR }}</td><td>{{ "%.2f"|format(toplam.EUR) }} €</td><td>{{ "%.2f"|format(toplam.EUR * eur) }} TL</td></tr>
+<tr style="background:#eff6ff;font-weight:bold"><td colspan="3">TOPLAM GELİR</td><td>{{ "%.2f"|format(toplam_tl) }} TL</td></tr>
+<tr style="background:#fef2f2"><td colspan="3">TOPLAM GİDER</td><td>-{{ "%.2f"|format(gider_tl) }} TL</td></tr>
+<tr style="background:#fef9c3"><td colspan="3">💳 TAHSİL EDİLECEK BORÇ</td><td>{{ "%.2f"|format(borc_tl) }} TL</td></tr>
+<tr style="background:#f0fdf4;font-weight:bold;font-size:18px"><td colspan="3">✅ NET CİRO</td><td>{{ "%.2f"|format(net) }} TL</td></tr>
+</table>
+</div>
+</div>
+{% endblock %}

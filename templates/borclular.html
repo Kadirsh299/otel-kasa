@@ -1,0 +1,67 @@
+{% extends "base.html" %}{% block icerik %}
+<div class="kart" style="background:linear-gradient(135deg,#dc2626,#991b1b);color:white">
+<h3 style="color:white;margin:0">💳 Toplam Alacak</h3>
+<div style="font-size:36px;font-weight:bold;margin-top:10px">{{ "%.2f"|format(toplam_borc) }} TL</div>
+<div style="opacity:.9;margin-top:5px">{{ borclular|length }} odada borç var</div>
+</div>
+
+<div class="kart">
+<h3>📋 Borçlu Odalar</h3>
+{% if borclular %}
+<div style="overflow-x:auto">
+<table>
+<tr><th>Oda</th><th>Müşteri</th><th>Toplam</th><th>Ödenen</th><th>Kalan Borç</th><th>Not</th><th>İşlem</th></tr>
+{% for k in borclular %}
+<tr>
+<td><b style="font-size:16px">{{ k.oda_no }}</b></td>
+<td>{{ k.musteri_adi or "-" }}</td>
+<td>{{ "%.2f"|format(k.toplam_tutar) }} TL</td>
+<td style="color:#16a34a">{{ "%.2f"|format(k.odenen) }} TL</td>
+<td><b style="color:#dc2626;font-size:16px">{{ "%.2f"|format(k.kalan) }} TL</b></td>
+<td style="font-size:12px;color:#64748b">{{ k.notlar or "-" }}</td>
+<td>
+<button class="btn btn-yesil" style="padding:6px 12px;font-size:12px"
+        onclick="odemeAc({{ k.id }}, '{{ k.oda_no }}', {{ k.kalan }})">💰 Ödeme Al</button>
+<a href="{{ url_for('odeme_gecmisi', kid=k.id) }}" class="btn btn-mavi" style="padding:6px 12px;font-size:12px">📜 Geçmiş</a>
+</td>
+</tr>
+{% endfor %}
+</table>
+</div>
+{% else %}
+<div style="text-align:center;padding:40px;color:#16a34a">
+<div style="font-size:60px">🎉</div>
+<div style="font-size:20px;font-weight:bold;margin-top:10px">Hiç borçlu oda yok!</div>
+<div style="color:#64748b;margin-top:5px">Tüm odalar ödemelerini tamamlamış.</div>
+</div>
+{% endif %}
+</div>
+
+<div id="odemeModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;padding:20px">
+<div class="kart" style="max-width:420px;width:100%;margin:0">
+<h3>💰 Ödeme Al</h3>
+<p>Oda: <b id="odemeOda"></b> — Kalan Borç: <b id="odemeKalan" style="color:#dc2626"></b> TL</p>
+<form method="post" id="odemeForm">
+<input name="tutar" placeholder="Alınan tutar (TL)" required type="number" step="0.01" style="width:100%;margin:10px 0">
+<select name="tip" required style="width:100%;margin:5px 0">
+<option>Nakit</option><option>Kredi Kartı</option><option>Havale</option>
+<option>USD</option><option>EUR</option>
+</select>
+<input name="aciklama" placeholder="Açıklama (opsiyonel)" style="width:100%;margin:5px 0">
+<div style="display:flex;gap:10px;margin-top:15px">
+<button type="submit" class="btn btn-yesil" style="flex:1">✅ ONAYLA</button>
+<button type="button" class="btn btn-gri" style="flex:1" onclick="document.getElementById('odemeModal').style.display='none'">İPTAL</button>
+</div>
+</form>
+</div></div>
+
+<script>
+function odemeAc(id, oda, kalan){
+  document.getElementById('odemeOda').textContent = oda;
+  document.getElementById('odemeKalan').textContent = kalan.toFixed(2);
+  document.getElementById('odemeForm').action = "/odeme_al/" + id;
+  document.getElementById('odemeModal').style.display = 'flex';
+  document.querySelector('#odemeForm input[name="tutar"]').value = kalan.toFixed(2);
+}
+</script>
+{% endblock %}

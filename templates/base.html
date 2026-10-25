@@ -1,0 +1,64 @@
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Otel Kasa</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:-apple-system,Arial;margin:0;background:#f1f5f9;color:#0f172a}
+nav{background:#1e293b;color:white;padding:10px 15px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+nav a{color:#cbd5e1;text-decoration:none;padding:8px 12px;border-radius:8px;font-size:14px}
+nav a:hover{background:#334155}
+.kullanici{margin-left:auto;display:flex;gap:10px;align-items:center;font-size:13px}
+.kullanici a{color:#fbbf24;padding:6px 10px}
+.container{max-width:1200px;margin:20px auto;padding:0 15px}
+.kart{background:white;padding:20px;border-radius:12px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+h3{margin:0 0 15px;color:#1e293b}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px;text-align:left;border-bottom:1px solid #e2e8f0;font-size:14px}
+th{background:#f8fafc;font-size:12px;color:#475569;text-transform:uppercase;letter-spacing:.5px}
+tr:hover{background:#f8fafc}
+.btn{display:inline-block;padding:10px 16px;border:none;border-radius:8px;cursor:pointer;text-decoration:none;font-size:14px;font-weight:600;text-align:center}
+.btn-yesil{background:#22c55e;color:white}
+.btn-kirmizi{background:#ef4444;color:white}
+.btn-mavi{background:#3b82f6;color:white}
+.btn-turuncu{background:#f59e0b;color:white}
+.btn-gri{background:#64748b;color:white}
+input,select,textarea{padding:10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px;font-family:inherit}
+input:focus,select:focus{outline:2px solid #3b82f6;border-color:transparent}
+.flash{padding:14px;border-radius:8px;margin-bottom:15px;font-size:14px}
+.flash-success{background:#dcfce7;color:#166534;border-left:4px solid #22c55e}
+.flash-danger{background:#fee2e2;color:#991b1b;border-left:4px solid #ef4444}
+.kilitli{background:#fef3c7;color:#92400e;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:bold}
+.acik{background:#dcfce7;color:#166534;padding:3px 10px;border-radius:6px;font-size:11px;font-weight:bold}
+.form-row{display:flex;gap:10px;flex-wrap:wrap}
+.form-row input,.form-row select{flex:1;min-width:120px}
+@media(max-width:768px){
+  nav{padding:8px}
+  nav a{padding:6px 10px;font-size:13px}
+  .kullanici{width:100%;margin-left:0;justify-content:space-between;border-top:1px solid #334155;padding-top:8px;margin-top:4px}
+  table{font-size:12px}
+  th,td{padding:8px 6px}
+  .kart{padding:15px}
+  .form-row input,.form-row select{min-width:100%}
+  .btn{width:100%;margin-top:5px}
+}
+</style></head><body>
+<nav>
+<a href="{{ url_for('odalar') }}">🛏️ Odalar</a>
+<a href="{{ url_for('borclular') }}">💳 Borçlular</a>
+<a href="{{ url_for('giderler') }}">💸 Giderler</a>
+{% if current_user.role == 'admin' %}
+<a href="{{ url_for('talepler') }}">📩 Talepler</a>
+<a href="{{ url_for('kasa') }}">💰 Kasa</a>
+<a href="{{ url_for('loglar') }}">📝 Loglar</a>
+{% endif %}
+<div class="kullanici">
+<span>👤 {{ current_user.full_name or current_user.username }}</span>
+<a href="{{ url_for('logout') }}">Çıkış</a>
+</div>
+</nav>
+<div class="container">
+{% with msgs = get_flashed_messages(with_categories=true) %}
+{% for cat, m in msgs %}<div class="flash flash-{{ cat }}">{{ m }}</div>{% endfor %}
+{% endwith %}
+{% block icerik %}{% endblock %}
+</div></body></html>

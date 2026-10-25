@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% block icerik %}
+<div class="kart">
+<h3>📝 Sistem Logları (Son 300)</h3>
+<div style="overflow-x:auto">
+<table>
+<tr><th>Tarih</th><th>Kullanıcı</th><th>İşlem</th><th>Detay</th></tr>
+{% for l in loglar %}
+<tr><td>{{ l.tarih.strftime("%d.%m.%Y %H:%M") }}</td><td>{{ l.kullanici }}</td>
+<td>{{ l.islem }}</td><td>{{ l.detay }}</td></tr>
+{% endfor %}
+</table>
+</div>
+</div>
+{% endblock %}
