@@ -70,4 +70,16 @@
           style="width:100%;min-height:90px;margin:10px 0"></textarea>
 <div style="display:flex;gap:10px;margin-top:10px">
 <button type="submit" class="btn btn-yesil" style="flex:1">GÖNDER</button>
-<button type="button" class="btn btn-gri" style="flex:1" onclick="document.getElementById('modal').style.display='none'">İ
+<button type="button" class="btn btn-gri" style="flex:1" onclick="document.getElementById('modal').style.display='none'">İPTAL</button>
+</div>
+</form>
+</div></div>
+
+<script>
+function talepAc(id, eski){
+  document.getElementById('eskiT').textContent = eski;
+  document.getElementById('talepForm').action = "/talep_gonder/" + id;
+  document.getElementById('modal').style.display = 'flex';
+}
+</script>
+{% endblock %}
