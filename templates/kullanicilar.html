@@ -1,0 +1,29 @@
+{% extends "base.html" %}{% block icerik %}
+<div class="kart">
+<h3>👥 Yeni Personel Ekle</h3>
+<form method="post" action="{{ url_for('personel_ekle') }}" class="form-row">
+    <input name="full_name" placeholder="Personel Adı Soyadı (Örn: Ayşe Yılmaz)" required style="flex:2;">
+    <input name="username" placeholder="Kullanıcı Adı (Örn: resepsiyon2)" required style="flex:1;">
+    <input name="password" type="password" placeholder="Şifre" required style="flex:1;">
+    <button class="btn btn-yesil" type="submit">PERSONEL EKLE</button>
+</form>
+<p style="font-size:12px; color:#64748b; margin-top:10px;">Eklediğiniz personel, sisteme sadece kendi kullanıcı adı ve şifresiyle giriş yapabilir.</p>
+</div>
+
+<div class="kart">
+<h3>📋 Kayıtlı Personeller</h3>
+<div style="overflow-x:auto">
+<table>
+<tr><th>Ad Soyad</th><th>Kullanıcı Adı</th><th>Rolü</th><th>Durum</th></tr>
+{% for u in kullanicilar %}
+<tr>
+    <td>{{ u.full_name }}</td>
+    <td><b>{{ u.username }}</b></td>
+    <td>{{ u.role|upper }}</td>
+    <td><span style="color:green; font-weight:bold;">Aktif</span></td>
+</tr>
+{% endfor %}
+</table>
+</div>
+</div>
+{% endblock %}
