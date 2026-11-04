@@ -1,7 +1,17 @@
 {% extends "base.html" %}{% block icerik %}
+<div class="kart" style="background:#e0f2fe; margin-bottom:15px; padding:15px;">
+    <h3 style="margin-top:0; color:#0369a1;">📅 Tarih Seç</h3>
+    <form method="get" class="form-row" style="align-items:center; margin:0;">
+        <label style="font-weight:bold; font-size:14px;">Görmek istediğiniz günü seçin:</label>
+        <input type="date" name="tarih" value="{{ secili_tarih }}" required style="max-width:200px;">
+        <button class="btn btn-mavi" type="submit" style="width:auto;">O Günü Göster</button>
+    </form>
+</div>
+
 <div class="kart">
-<h3>➕ Yeni Kayıt Ekle</h3>
+<h3>➕ Yeni Kayıt Ekle (Seçili Gün İçin)</h3>
 <form method="post" action="{{ url_for('gecmis_kayit_talebi') if not admin else url_for('kayit_ekle') }}">
+<input type="hidden" name="kayit_tarihi" value="{{ secili_tarih }}">
 <div class="form-row">
 <select name="oda" required>
 <option value="">Oda seçin</option>
@@ -20,7 +30,7 @@
 
 {% if not admin %}
 <div class="form-row" style="margin-top:10px; background:#fef3c7; padding:10px; border-radius:8px;">
-    <p style="width:100%; margin:0 0 5px 0; font-size:12px; color:#92400e;"><b>Dikkat:</b> Geçmiş tarihli kayıt girecekseniz sebep yazmalısınız.</p>
+    <p style="width:100%; margin:0 0 5px 0; font-size:12px; color:#92400e;"><b>Dikkat:</b> Farklı bir tarihe kayıt girecekseniz sebep yazmalısınız.</p>
     <input type="date" name="tarih" required style="flex:1;">
     <input name="sebep" placeholder="Geçmiş tarih sebebi (ZORUNLU)" required style="flex:2;">
 </div>
@@ -35,20 +45,27 @@
 </div>
 
 <div class="kart">
-<h3>📋 Oda Kayıtları</h3>
+<h3>📋 {{ secili_tarih }} Tarihli Kayıtlar</h3>
+{% if kayitlar %}
 <div style="overflow-x:auto"><table>
-<tr><th>Oda</th><th>Müşteri</th><th>Toplam</th><th>Ödenen</th><th>Kalan</th><th>Ödeme</th><th>Tarih</th><th>Durum</th><th>İşlem</th></tr>
+<tr><th>Oda</th><th>Müşteri</th><th>Toplam</th><th>Ödenen</th><th>Kalan</th><th>Ödeme</th><th>Durum</th><th>İşlem</th></tr>
 {% for k in kayitlar %}
 <tr>
 <td><b>{{ k.oda_no }}</b></td><td>{{ k.musteri_adi or "-" }}</td>
 <td>{{ "%.2f"|format(k.toplam_tutar) }} TL</td><td>{{ "%.2f"|format(k.odenen) }} TL</td>
 <td>{% if k.kalan > 0.01 %}<b style="color:#dc2626">{{ "%.2f"|format(k.kalan) }} TL</b>{% else %}<span style="color:#16a34a;font-weight:bold">✅ 0</span>{% endif %}</td>
-<td>{{ k.tip }}</td><td>{{ k.tarih.strftime("%d.%m.%Y") }}</td>
+<td>{{ k.tip }}</td>
 <td>{% if k.kilitli %}<span class="kilitli">🔒</span>{% else %}<span class="acik">🔓</span>{% endif %}</td>
 <td>{% if admin %}<a href="{{ url_for('kayit_sil', kid=k.id) }}" class="btn btn-kirmizi" style="padding:5px 8px;font-size:11px" onclick="return confirm('Silinsin mi?')">Sil</a>{% else %}<button class="btn btn-turuncu" style="padding:5px 8px;font-size:11px" onclick="talepAc({{ k.id }}, {{ k.toplam_tutar }})">Değişiklik</button>{% endif %}</td>
 </tr>
 {% endfor %}
-</table></div></div>
+</table></div>
+{% else %}
+<div style="text-align:center; padding:30px; color:#64748b;">
+    <h3>Bu tarihte henüz kayıt yok.</h3>
+</div>
+{% endif %}
+</div>
 
 <div id="modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;padding:20px">
 <div class="kart" style="max-width:420px;width:100%;margin:0"><h3>✏️ Değişiklik Talebi</h3>
