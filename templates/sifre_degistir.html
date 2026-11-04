@@ -1,0 +1,21 @@
+{% extends "base.html" %}{% block icerik %}
+<div class="kart" style="max-width:500px; margin:50px auto;">
+<h3>🔐 Şifre Değiştir</h3>
+<p style="font-size:14px; color:#64748b;">Güvenliğiniz için şifrenizi belirli aralıklarla değiştirebilirsiniz.</p>
+<form method="post">
+    <div style="margin-bottom:15px;">
+        <label style="font-size:13px; font-weight:bold;">Mevcut Şifreniz:</label>
+        <input type="password" name="eski_sifre" required style="width:100%; padding:10px; margin-top:5px;">
+    </div>
+    <div style="margin-bottom:15px;">
+        <label style="font-size:13px; font-weight:bold;">Yeni Şifreniz:</label>
+        <input type="password" name="yeni_sifre" required style="width:100%; padding:10px; margin-top:5px;">
+    </div>
+    <div style="margin-bottom:20px;">
+        <label style="font-size:13px; font-weight:bold;">Yeni Şifreniz (Tekrar):</label>
+        <input type="password" name="yeni_sifre_tekrar" required style="width:100%; padding:10px; margin-top:5px;">
+    </div>
+    <button class="btn btn-yesil" type="submit" style="width:100%;">ŞİFREMİ GÜNCELLE</button>
+</form>
+</div>
+{% endblock %}
