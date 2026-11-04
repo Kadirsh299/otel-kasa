@@ -365,7 +365,52 @@ def kasa_excel(ay):
     bio = io.BytesIO(); wb.save(bio); bio.seek(0)
     return send_file(bio, as_attachment=True, download_name=f"kasa_{ay}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+@app.route("/sifre_degistir", methods=["GET", "POST"])
+@giris_gerek
+def sifre_degistir():
+    if request.method == "POST":
+        eski = request.form["eski_sifre"]
+        yeni = request.form["yeni_sifre"]
+        tekrar = request.form["yeni_sifre_tekrar"]
+        
+        u = User.query.get(session["user_id"])
+        if not check_password_hash(u.password_hash, eski):
+            flash("Mevcut şifreniz yanlış!", "danger")
+        elif yeni != tekrar:
+            flash("Yeni şifreler birbiriyle uyuşmuyor!", "danger")
+        elif len(yeni) < 4:
+            flash("Yeni şifre en az 4 karakter olmalıdır!", "danger")
+        else:
+            u.password_hash = generate_password_hash(yeni)
+            db.session.commit()
+            log_yaz("SIFRE DEGISTI", f"{u.username} şifresini değiştirdi.")
+            flash("✅ Şifreniz başarıyla güncellendi!", "success")
+            return redirect(url_for("odalar"))
+            
+    return render_template("sifre_degistir.html")
 
+@app.route("/personel_ekle", methods=["POST"])
+@giris_gerek
+def personel_ekle():
+    if not admin_mi():
+        flash("Yetkiniz yok!", "danger"); return redirect(url_for("odalar"))
+    
+    kullanici_adi = request.form["username"]
+    sifre = request.form["password"]
+    ad_soyad = request.form["full_name"]
+    
+    if User.query.filter_by(username=kullanici_adi).first():
+        flash("Bu kullanıcı adı zaten alınmış!", "danger")
+    else:
+        yeni_personel = User(username=kullanici_adi, 
+                             password_hash=generate_password_hash(sifre),
+                             full_name=ad_soyad, role="resepsiyon")
+        db.session.add(yeni_personel)
+        db.session.commit()
+        log_yaz("PERSONEL EKLE", f"{kullanici_adi} sisteme eklendi.")
+        flash(f"✅ {kullanici_adi} adlı personel başarıyla eklendi.", "success")
+        
+    return redirect(url_for("kullanicilar"))
 @app.route("/loglar")
 @giris_gerek
 def loglar():
