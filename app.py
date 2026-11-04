@@ -48,8 +48,15 @@ class Gider(db.Model):
 
 class Talep(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    kayit_id = db.Column(db.Integer)
+    kayit_id = db.Column(db.Integer, nullable=True)
+    talep_tipi = db.Column(db.String(20), default="tutar_degisikligi")
     oda_no = db.Column(db.String(10))
+    musteri_adi = db.Column(db.String(120))
+    toplam_tutar = db.Column(db.Float)
+    odenen = db.Column(db.Float)
+    tip = db.Column(db.String(20))
+    notlar = db.Column(db.Text)
+    tarih_str = db.Column(db.String(20))
     eski_tutar = db.Column(db.Float)
     yeni_tutar = db.Column(db.Float)
     sebep = db.Column(db.Text, nullable=False)
@@ -157,6 +164,29 @@ def kayit_ekle():
     db.session.add(k); db.session.commit()
     log_yaz("KAYIT EKLE", f"{k.oda_no} - {toplam} (odenen: {odenen}, kalan: {toplam-odenen})")
     flash(f"✅ {k.oda_no} → Toplam {toplam} TL, Ödenen {odenen} TL, Kalan {toplam-odenen} TL", "success")
+    return redirect(url_for("odalar"))
+
+@app.route("/gecmis_kayit_talebi", methods=["POST"])
+@giris_gerek
+def gecmis_kayit_talebi():
+    try:
+        toplam = float(request.form["toplam_tutar"].replace(",", "."))
+        odenen = float(request.form.get("odenen", "0").replace(",", ".") or 0)
+    except:
+        flash("Geçerli tutar girin!", "danger")
+        return redirect(url_for("odalar"))
+    tarih_str = request.form.get("tarih")
+    if not tarih_str:
+        flash("Lütfen bir tarih seçin!", "danger")
+        return redirect(url_for("odalar"))
+    t = Talep(talep_tipi="yeni_kayit", oda_no=request.form["oda"],
+        musteri_adi=request.form.get("musteri_adi", ""), toplam_tutar=toplam,
+        odenen=odenen, tip=request.form["tip"], notlar=request.form.get("notlar", ""),
+        tarih_str=tarih_str, sebep=request.form.get("sebep", "Geçmiş tarihli kayıt"),
+        personel=session.get("username"))
+    db.session.add(t); db.session.commit()
+    log_yaz("GECMIS KAYIT TALEBI", f"{t.oda_no} - {toplam} TL - Tarih: {tarih_str}")
+    flash("✅ Geçmiş tarihli kayıt talebi ana kullanıcıya gönderildi.", "success")
     return redirect(url_for("odalar"))
 
 @app.route("/kayit_sil/<int:kid>")
@@ -267,8 +297,17 @@ def talep_karar(tid, karar):
     if t.durum == "Bekliyor":
         t.durum = "Onaylandı" if karar == "onay" else "Reddedildi"
         if karar == "onay":
-            k = Kayit.query.get(t.kayit_id)
-            if k: k.toplam_tutar = t.yeni_tutar; k.kilitli = False
+            if t.talep_tipi == "yeni_kayit":
+                yeni_tarih = datetime.now()
+                try: yeni_tarih = datetime.strptime(t.tarih_str, "%Y-%m-%d")
+                except: pass
+                k = Kayit(oda_no=t.oda_no, musteri_adi=t.musteri_adi, toplam_tutar=t.toplam_tutar, 
+                          odenen=t.odenen, tip=t.tip, personel=t.personel, kilitli=True, 
+                          notlar=t.notlar, tarih=yeni_tarih)
+                db.session.add(k)
+            else:
+                k = Kayit.query.get(t.kayit_id)
+                if k: k.toplam_tutar = t.yeni_tutar; k.kilitli = False
         db.session.commit()
         log_yaz("TALEP KARAR", f"#{tid} {t.durum}")
     return redirect(url_for("talepler"))
@@ -348,12 +387,6 @@ def init_db():
             print("✅ İlk kurulum tamam")
 
 init_db()
-# Veritabanı sıfırlama komutu
-if os.environ.get("RESET_DB") == "1":
-    print("⚠️ Veritabanı sıfırlanıyor...")
-    with app.app_context():
-        db.drop_all()
-        db.create_all()
-    print("✅ Veritabanı sıfırlandı.")
+
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
