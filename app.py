@@ -11,6 +11,7 @@ app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///yeni_kasa.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
+# ============ VERİTABANI MODELLERİ ============
 class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
@@ -86,6 +87,7 @@ class Kur(db.Model):
     usd = db.Column(db.Float, default=34.0)
     eur = db.Column(db.Float, default=37.0)
 
+# ============ YARDIMCILAR ============
 def giris_yapmis():
     return "user_id" in session
 
@@ -112,6 +114,7 @@ def inject_user():
                               "role":session.get("role","")},
                 giris=giris_yapmis())
 
+# ============ ROTALAR (SAYFALAR) ============
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
@@ -365,6 +368,8 @@ def kasa_excel(ay):
     bio = io.BytesIO(); wb.save(bio); bio.seek(0)
     return send_file(bio, as_attachment=True, download_name=f"kasa_{ay}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+# ============ YENİ EKLENEN KISIMLAR (ŞİFRE VE PERSONEL) ============
 @app.route("/sifre_degistir", methods=["GET", "POST"])
 @giris_gerek
 def sifre_degistir():
@@ -386,8 +391,15 @@ def sifre_degistir():
             log_yaz("SIFRE DEGISTI", f"{u.username} şifresini değiştirdi.")
             flash("✅ Şifreniz başarıyla güncellendi!", "success")
             return redirect(url_for("odalar"))
-            
     return render_template("sifre_degistir.html")
+
+@app.route("/kullanicilar")
+@giris_gerek
+def kullanicilar():
+    if not admin_mi():
+        flash("Yetkiniz yok!", "danger"); return redirect(url_for("odalar"))
+    personeller = User.query.all()
+    return render_template("kullanicilar.html", kullanicilar=personeller)
 
 @app.route("/personel_ekle", methods=["POST"])
 @giris_gerek
@@ -411,6 +423,8 @@ def personel_ekle():
         flash(f"✅ {kullanici_adi} adlı personel başarıyla eklendi.", "success")
         
     return redirect(url_for("kullanicilar"))
+
+# ============ LOGLAR VE BAŞLANGIÇ ============
 @app.route("/loglar")
 @giris_gerek
 def loglar():
