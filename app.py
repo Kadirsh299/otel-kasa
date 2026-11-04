@@ -30,7 +30,7 @@ class Kayit(db.Model):
     musteri_adi = db.Column(db.String(120), default="")
     toplam_tutar = db.Column(db.Float, nullable=False)
     odenen = db.Column(db.Float, default=0)
-    tip = db.Column(db.String(20), nullable=False)
+    tip = db.Column(db.String(30), nullable=False) # Ödeme tipleri genişletildi
     tarih = db.Column(db.DateTime, default=datetime.now)
     personel = db.Column(db.String(80))
     kilitli = db.Column(db.Boolean, default=True)
@@ -47,6 +47,21 @@ class Gider(db.Model):
     tarih = db.Column(db.DateTime, default=datetime.now)
     personel = db.Column(db.String(80))
 
+class Personel(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    ad_soyad = db.Column(db.String(120), nullable=False)
+    gorev = db.Column(db.String(50), default="Genel")
+    maas = db.Column(db.Float, default=0)
+    ise_giris = db.Column(db.DateTime, default=datetime.now)
+    avanslar = db.relationship('Avans', backref='personel', lazy=True)
+
+class Avans(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    personel_id = db.Column(db.Integer, db.ForeignKey('personel.id'), nullable=False)
+    tutar = db.Column(db.Float, nullable=False)
+    tarih = db.Column(db.DateTime, default=datetime.now)
+    aciklama = db.Column(db.String(255), default="")
+
 class Talep(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     kayit_id = db.Column(db.Integer, nullable=True)
@@ -55,7 +70,7 @@ class Talep(db.Model):
     musteri_adi = db.Column(db.String(120))
     toplam_tutar = db.Column(db.Float)
     odenen = db.Column(db.Float)
-    tip = db.Column(db.String(20))
+    tip = db.Column(db.String(30))
     notlar = db.Column(db.Text)
     tarih_str = db.Column(db.String(20))
     eski_tutar = db.Column(db.Float)
@@ -69,7 +84,7 @@ class Odeme(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     kayit_id = db.Column(db.Integer, db.ForeignKey("kayit.id"))
     tutar = db.Column(db.Float, nullable=False)
-    tip = db.Column(db.String(20), default="Nakit")
+    tip = db.Column(db.String(30), default="Nakit")
     tarih = db.Column(db.DateTime, default=datetime.now)
     personel = db.Column(db.String(80))
     aciklama = db.Column(db.String(255), default="")
@@ -221,6 +236,7 @@ def talep_gonder(kid):
     flash("✅ Talep ana kullanıcıya gönderildi.", "success")
     return redirect(url_for("odalar"))
 
+# ============ GİDERLER ============
 @app.route("/giderler")
 @giris_gerek
 def giderler():
@@ -241,6 +257,7 @@ def gider_ekle():
     flash("Gider eklendi.", "success")
     return redirect(url_for("giderler"))
 
+# ============ BORÇLULAR ============
 @app.route("/borclular")
 @giris_gerek
 def borclular():
@@ -284,6 +301,59 @@ def odeme_gecmisi(kid):
     odemeler = Odeme.query.filter_by(kayit_id=kid).order_by(Odeme.tarih.desc()).all()
     return render_template("odeme_gecmisi.html", kayit=k, odemeler=odemeler)
 
+# ============ PERSONEL VE MAAŞ SİSTEMİ ============
+@app.route("/personel", methods=["GET", "POST"])
+@giris_gerek
+def personel():
+    if not admin_mi():
+        flash("Yetkiniz yok!", "danger"); return redirect(url_for("odalar"))
+    
+    if request.method == "POST":
+        try: maas = float(request.form["maas"].replace(",", "."))
+        except: maas = 0
+        p = Personel(ad_soyad=request.form["ad_soyad"], gorev=request.form["gorev"], maas=maas)
+        db.session.add(p); db.session.commit()
+        flash(f"✅ {p.ad_soyad} kadroya eklendi.", "success")
+        return redirect(url_for("personel"))
+        
+    personeller = Personel.query.all()
+    return render_template("personel.html", personeller=personeller)
+
+@app.route("/avans_ver/<int:pid>", methods=["POST"])
+@giris_gerek
+def avans_ver(pid):
+    if not admin_mi(): return redirect(url_for("odalar"))
+    p = Personel.query.get_or_404(pid)
+    try: tutar = float(request.form["tutar"].replace(",", "."))
+    except: 
+        flash("Geçerli tutar girin!", "danger"); return redirect(url_for("personel"))
+    
+    db.session.add(Avans(personel_id=p.id, tutar=tutar, aciklama=request.form.get("aciklama", "")))
+    db.session.commit()
+    log_yaz("AVANS", f"{p.ad_soyad} - {tutar} TL")
+    flash(f"✅ {p.ad_soyad} kişisine {tutar} TL avans verildi.", "success")
+    return redirect(url_for("personel"))
+
+@app.route("/maas_ode/<int:pid>")
+@giris_gerek
+def maas_ode(pid):
+    if not admin_mi(): return redirect(url_for("odalar"))
+    p = Personel.query.get_or_404(pid)
+    toplam_avans = sum(a.tutar for a in p.avanslar)
+    kalan = p.maas - toplam_avans
+    
+    if kalan > 0:
+        db.session.add(Gider(aciklama=f"{p.ad_soyad} Maaş Ödemesi", tutar=kalan, personel="admin"))
+        log_yaz("MAAS ODEME", f"{p.ad_soyad} - {kalan} TL")
+        for a in p.avanslar: db.session.delete(a)
+        db.session.commit()
+        flash(f"✅ {p.ad_soyad} kişisine {kalan} TL maaş ödemesi yapıldı ve kasaya gider olarak işlendi.", "success")
+    else:
+        flash("Bu personelin ödenecek maaşı kalmamış (Avanslar maaşı aşmış).", "danger")
+        
+    return redirect(url_for("personel"))
+
+# ============ TALEPLER ============
 @app.route("/talepler")
 @giris_gerek
 def talepler():
@@ -315,31 +385,47 @@ def talep_karar(tid, karar):
         log_yaz("TALEP KARAR", f"#{tid} {t.durum}")
     return redirect(url_for("talepler"))
 
+# ============ KASA ============
 @app.route("/kasa", methods=["GET","POST"])
 @giris_gerek
 def kasa():
     if not admin_mi():
         flash("Yetkiniz yok!", "danger"); return redirect(url_for("odalar"))
     ay = request.values.get("ay", datetime.now().strftime("%Y-%m"))
+    
     if request.method == "POST":
-        usd = float(request.form["usd"]); eur = float(request.form["eur"])
-        kur = Kur.query.filter_by(ay=ay).first()
-        if kur: kur.usd = usd; kur.eur = eur
-        else: db.session.add(Kur(ay=ay, usd=usd, eur=eur))
-        db.session.commit()
+        try:
+            usd = float(request.form["usd"].replace(",", "."))
+            eur = float(request.form["eur"].replace(",", "."))
+            kur = Kur.query.filter_by(ay=ay).first()
+            if kur: kur.usd = usd; kur.eur = eur
+            else: db.session.add(Kur(ay=ay, usd=usd, eur=eur))
+            db.session.commit()
+        except:
+            flash("Lütfen kurları sadece sayı olarak girin (Örn: 34.50)", "danger")
+            return redirect(url_for("kasa"))
+            
     kur = Kur.query.filter_by(ay=ay).first()
     usd = kur.usd if kur else 34.0
     eur = kur.eur if kur else 37.0
-    toplam = {"Nakit":0, "Kredi Kartı":0, "Havale":0, "USD":0, "EUR":0}
+    
+    # Yeni ödeme tipleri eklendi
+    toplam = {"Nakit":0, "Kredi Kartı":0, "Havale":0, "USD":0, "EUR":0, "ETS":0, "Tatilbudur":0, "Joly":0, "Otelfiyat":0}
     adet = {k:0 for k in toplam}
+    
     for k in Kayit.query.filter(Kayit.tarih.like(f"{ay}%")).all():
-        toplam[k.tip] += k.odenen
-        adet[k.tip] += 1
-    toplam_tl = (toplam["Nakit"] + toplam["Kredi Kartı"] + toplam["Havale"]
-                 + toplam["USD"]*usd + toplam["EUR"]*eur)
+        if k.tip in toplam:
+            toplam[k.tip] += k.odenen
+            adet[k.tip] += 1
+            
+    toplam_tl = (toplam["Nakit"] + toplam["Kredi Kartı"] + toplam["Havale"] + toplam["ETS"] + 
+                 toplam["Tatilbudur"] + toplam["Joly"] + toplam["Otelfiyat"] +
+                 toplam["USD"]*usd + toplam["EUR"]*eur)
+                 
     gider_tl = sum(g.tutar for g in Gider.query.filter(Gider.tarih.like(f"{ay}%")).all())
     net = toplam_tl - gider_tl
     borc_tl = sum(k.kalan for k in Kayit.query.filter(Kayit.tarih.like(f"{ay}%")).all())
+    
     return render_template("kasa.html", ay=ay, toplam=toplam, adet=adet,
                            usd=usd, eur=eur, toplam_tl=toplam_tl,
                            gider_tl=gider_tl, net=net, borc_tl=borc_tl)
@@ -353,11 +439,14 @@ def kasa_excel(ay):
     ws.append(["Ödeme Tipi", "Adet", "Tahsil Edilen (TL)"])
     kur = Kur.query.filter_by(ay=ay).first()
     usd = kur.usd if kur else 34.0; eur = kur.eur if kur else 37.0
-    for tip in ["Nakit","Kredi Kartı","Havale","USD","EUR"]:
+    
+    tipler = ["Nakit","Kredi Kartı","Havale","USD","EUR","ETS","Tatilbudur","Joly","Otelfiyat"]
+    for tip in tipler:
         kayitlar = Kayit.query.filter(Kayit.tarih.like(f"{ay}%"), Kayit.tip==tip).all()
         top = sum(k.odenen for k in kayitlar)
         tl = top*usd if tip=="USD" else (top*eur if tip=="EUR" else top)
         ws.append([tip, len(kayitlar), f"{tl:.2f}"])
+        
     ws.append([]); ws.append(["GIDERLER"])
     for g in Gider.query.filter(Gider.tarih.like(f"{ay}%")).all():
         ws.append([g.aciklama, g.tarih.strftime("%d.%m.%Y"), f"{g.tutar:.2f}"])
@@ -369,7 +458,7 @@ def kasa_excel(ay):
     return send_file(bio, as_attachment=True, download_name=f"kasa_{ay}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# ============ YENİ EKLENEN KISIMLAR (ŞİFRE VE PERSONEL) ============
+# ============ ŞİFRE VE KULLANICI İŞLEMLERİ ============
 @app.route("/sifre_degistir", methods=["GET", "POST"])
 @giris_gerek
 def sifre_degistir():
@@ -424,7 +513,6 @@ def personel_ekle():
         
     return redirect(url_for("kullanicilar"))
 
-# ============ LOGLAR VE BAŞLANGIÇ ============
 @app.route("/loglar")
 @giris_gerek
 def loglar():
