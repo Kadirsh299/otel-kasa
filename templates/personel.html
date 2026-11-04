@@ -24,10 +24,11 @@
     <td style="color:#dc2626;">{{ "%.2f"|format(toplam_avans) }} TL</td>
     <td><b style="color:#16a34a; font-size:16px;">{{ "%.2f"|format(kalan) }} TL</b></td>
     <td>
-        <button class="btn btn-turuncu" style="padding:5px 10px;font-size:12px" onclick="avansAc({{ p.id }}, '{{ p.ad_soyad }}')">💸 Avans Ver</button>
+        <button class="btn btn-turuncu" style="padding:5px 10px;font-size:12px" onclick="avansAc({{ p.id }}, '{{ p.ad_soyad }}')">💸 Avans</button>
         {% if kalan > 0 %}
-        <a href="{{ url_for('maas_ode', pid=p.id) }}" class="btn btn-yesil" style="padding:5px 10px;font-size:12px" onclick="return confirm('{{ p.ad_soyad }} kişisine {{ kalan }} TL maaş ödemesi yapılacak ve kasaya gider olarak işlenecek. Onaylıyor musunuz?')">💰 Maaşı Öde</a>
+        <a href="{{ url_for('maas_ode', pid=p.id) }}" class="btn btn-yesil" style="padding:5px 10px;font-size:12px" onclick="return confirm('{{ p.ad_soyad }} kişisine {{ kalan }} TL maaş ödemesi yapılacak ve kasaya gider olarak işlenecek. Onaylıyor musunuz?')">💰 Maaş Öde</a>
         {% endif %}
+        <a href="{{ url_for('personel_sil', pid=p.id) }}" class="btn btn-kirmizi" style="padding:5px 10px;font-size:12px" onclick="return confirm('{{ p.ad_soyad }} adlı personeli tamamen silmek istediğinize emin misiniz?')">🗑️ Sil</a>
     </td>
 </tr>
 {% endfor %}
