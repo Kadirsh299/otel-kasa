@@ -4,6 +4,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from openpyxl import Workbook
 import io, os
+# Kalıcı disk klasörü yoksa otomatik oluştur (502 hatasını çözer)
+os.makedirs("/var/data", exist_ok=True)
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "otel-kasa-2025-gizli-anahtar-degistir")
