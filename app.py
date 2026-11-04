@@ -7,7 +7,7 @@ import io, os
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "otel-kasa-2025-gizli-anahtar-degistir")
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///yeni_kasa.db"
+app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:////var/data/yeni_kasa.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
