@@ -49,10 +49,12 @@ input:focus,select:focus{outline:2px solid #3b82f6;border-color:transparent}
 {% if current_user.role == 'admin' %}
 <a href="{{ url_for('talepler') }}">📩 Talepler</a>
 <a href="{{ url_for('kasa') }}">💰 Kasa</a>
-<a href="{{ url_for('loglar') }}">📝 Loglar</a>
+<a href="{{ url_for('loglar') }}"> Loglar</a>📝
+<a href="{{ url_for('kullanicilar') }}">👥 Personeller</a>
 {% endif %}
 <div class="kullanici">
 <span>👤 {{ current_user.full_name or current_user.username }}</span>
+  <a href="{{ url_for('sifre_degistir') }}" style="color:#fbbf24; font-weight:bold;">🔐 Şifre Değiştir</a>
 <a href="{{ url_for('logout') }}">Çıkış</a>
 </div>
 </nav>
