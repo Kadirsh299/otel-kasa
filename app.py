@@ -30,7 +30,7 @@ class Kayit(db.Model):
     musteri_adi = db.Column(db.String(120), default="")
     toplam_tutar = db.Column(db.Float, nullable=False)
     odenen = db.Column(db.Float, default=0)
-    tip = db.Column(db.String(30), nullable=False) # Ödeme tipleri genişletildi
+    tip = db.Column(db.String(30), nullable=False)
     tarih = db.Column(db.DateTime, default=datetime.now)
     personel = db.Column(db.String(80))
     kilitli = db.Column(db.Boolean, default=True)
@@ -353,6 +353,19 @@ def maas_ode(pid):
         
     return redirect(url_for("personel"))
 
+@app.route("/personel_sil/<int:pid>")
+@giris_gerek
+def personel_sil(pid):
+    if not admin_mi(): return redirect(url_for("odalar"))
+    p = Personel.query.get_or_404(pid)
+    # Avansları da sil
+    Avans.query.filter_by(personel_id=p.id).delete()
+    db.session.delete(p)
+    db.session.commit()
+    log_yaz("PERSONEL SIL", f"{p.ad_soyad} silindi.")
+    flash(f"🗑️ {p.ad_soyad} sistemden silindi.", "success")
+    return redirect(url_for("personel"))
+
 # ============ TALEPLER ============
 @app.route("/talepler")
 @giris_gerek
@@ -409,7 +422,6 @@ def kasa():
     usd = kur.usd if kur else 34.0
     eur = kur.eur if kur else 37.0
     
-    # Yeni ödeme tipleri eklendi
     toplam = {"Nakit":0, "Kredi Kartı":0, "Havale":0, "USD":0, "EUR":0, "ETS":0, "Tatilbudur":0, "Joly":0, "Otelfiyat":0}
     adet = {k:0 for k in toplam}
     
