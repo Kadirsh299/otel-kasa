@@ -2,10 +2,12 @@
 <div class="kart">
 <h3>👥 Yeni Personel Ekle</h3>
 <form method="post" class="form-row">
-    <input name="ad_soyad" placeholder="Adı Soyadı (Örn: Fatma Hanım)" required style="flex:2;">
-    <input name="gorev" placeholder="Görevi (Örn: Temizlik)" required style="flex:1;">
+    <input name="ad_soyad" placeholder="Adı Soyadı" required style="flex:2;">
+    <input name="gorev" placeholder="Görevi" required style="flex:1;">
     <input name="maas" placeholder="Maaş (TL)" type="number" step="0.01" required style="flex:1;">
-    <button class="btn btn-yesil" type="submit">PERSONEL EKLE</button>
+    <label style="font-size:12px;">İşe Giriş Tarihi:<br><input type="date" name="ise_giris" required style="width:100%;"></label>
+    <label style="font-size:12px;">Maaş Günü (Ayın Kaçı):<br><input type="number" name="maas_gunu" min="1" max="31" value="1" required style="width:100%;"></label>
+    <button class="btn btn-yesil" type="submit" style="align-self:flex-end;">PERSONEL EKLE</button>
 </form>
 </div>
 
@@ -13,7 +15,7 @@
 <h3>📋 Personel ve Maaş Takibi</h3>
 <div style="overflow-x:auto">
 <table>
-<tr><th>Ad Soyad</th><th>Görev</th><th>Maaş</th><th>Toplam Avans</th><th>Kalan Maaş</th><th>İşlemler</th></tr>
+<tr><th>Ad Soyad</th><th>Görev</th><th>Maaş</th><th>İşe Giriş</th><th>Maaş Günü</th><th>Toplam Avans</th><th>Kalan Maaş</th><th>İşlemler</th></tr>
 {% for p in personeller %}
 {% set toplam_avans = p.avanslar|sum(attribute='tutar') %}
 {% set kalan = p.maas - toplam_avans %}
@@ -21,14 +23,14 @@
     <td><b>{{ p.ad_soyad }}</b></td>
     <td>{{ p.gorev }}</td>
     <td>{{ "%.2f"|format(p.maas) }} TL</td>
+    <td>{{ p.ise_giris.strftime("%d.%m.%Y") }}</td>
+    <td>Her ayın <b>{{ p.maas_gunu }}</b>.</td>
     <td style="color:#dc2626;">{{ "%.2f"|format(toplam_avans) }} TL</td>
     <td><b style="color:#16a34a; font-size:16px;">{{ "%.2f"|format(kalan) }} TL</b></td>
     <td>
         <button class="btn btn-turuncu" style="padding:5px 10px;font-size:12px" onclick="avansAc({{ p.id }}, '{{ p.ad_soyad }}')">💸 Avans</button>
-        {% if kalan > 0 %}
-        <a href="{{ url_for('maas_ode', pid=p.id) }}" class="btn btn-yesil" style="padding:5px 10px;font-size:12px" onclick="return confirm('{{ p.ad_soyad }} kişisine {{ kalan }} TL maaş ödemesi yapılacak ve kasaya gider olarak işlenecek. Onaylıyor musunuz?')">💰 Maaş Öde</a>
-        {% endif %}
-        <a href="{{ url_for('personel_sil', pid=p.id) }}" class="btn btn-kirmizi" style="padding:5px 10px;font-size:12px" onclick="return confirm('{{ p.ad_soyad }} adlı personeli tamamen silmek istediğinize emin misiniz?')">🗑️ Sil</a>
+        {% if kalan > 0 %}<a href="{{ url_for('maas_ode', pid=p.id) }}" class="btn btn-yesil" style="padding:5px 10px;font-size:12px" onclick="return confirm('{{ kalan }} TL maaş ödenip gidere yazılacak. Onaylıyor musunuz?')">💰 Maaş Öde</a>{% endif %} 
+        <a href="{{ url_for('personel_sil', pid=p.id) }}" class="btn btn-kirmizi" style="padding:5px 10px;font-size:12px" onclick="return confirm('Silinsin mi?')">🗑️ Sil</a>
     </td>
 </tr>
 {% endfor %}
@@ -36,26 +38,7 @@
 </div>
 </div>
 
-<!-- Avans Modal -->
 <div id="avansModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.6);z-index:999;align-items:center;justify-content:center;padding:20px">
-<div class="kart" style="max-width:400px;width:100%;margin:0">
-<h3>💸 Avans Ver</h3>
-<p>Personel: <b id="avansAd"></b></p>
-<form method="post" id="avansForm">
-<input name="tutar" placeholder="Avans Tutarı (TL)" required type="number" step="0.01" style="width:100%;margin:10px 0">
-<input name="aciklama" placeholder="Açıklama (İsteğe bağlı)" style="width:100%;margin:5px 0">
-<div style="display:flex;gap:10px;margin-top:15px">
-<button type="submit" class="btn btn-yesil" style="flex:1">ONAYLA</button>
-<button type="button" class="btn btn-gri" style="flex:1" onclick="document.getElementById('avansModal').style.display='none'">İPTAL</button>
-</div>
-</form>
-</div></div>
-
-<script>
-function avansAc(id, ad){
-  document.getElementById('avansAd').textContent = ad;
-  document.getElementById('avansForm').action = "/avans_ver/" + id;
-  document.getElementById('avansModal').style.display = 'flex';
-}
-</script>
+<div class="kart" style="max-width:400px;width:100%;margin:0"><h3>💸 Avans Ver</h3><p>Personel: <b id="avansAd"></b></p><form method="post" id="avansForm"><input name="tutar" placeholder="Avans Tutarı (TL)" required type="number" step="0.01" style="width:100%;margin:10px 0"><input name="aciklama" placeholder="Açıklama (İsteğe bağlı)" style="width:100%;margin:5px 0"><div style="display:flex;gap:10px;margin-top:15px"><button type="submit" class="btn btn-yesil" style="flex:1">ONAYLA</button><button type="button" class="btn btn-gri" style="flex:1" onclick="document.getElementById('avansModal').style.display='none'">İPTAL</button></div></form></div></div>
+<script>function avansAc(id, ad){document.getElementById('avansAd').textContent = ad;document.getElementById('avansForm').action = "/avans_ver/" + id;document.getElementById('avansModal').style.display = 'flex';}</script>
 {% endblock %}
