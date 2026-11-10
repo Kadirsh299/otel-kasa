@@ -168,7 +168,6 @@ def kayit_ekle():
     try: kayit_tarihi = datetime.strptime(secilen_tarih_str, "%Y-%m-%d")
     except: pass
 
-    # RESEPSİYON GEÇMİŞ VEYA GELECEK TARİH SEÇTİYSE -> TALEP OLUŞTUR
     if not admin_mi() and secilen_tarih_str != bugun_str:
         t = Talep(talep_tipi="yeni_kayit", oda_no=request.form["oda"], 
                   musteri_adi=request.form.get("musteri_adi", ""), 
@@ -180,14 +179,13 @@ def kayit_ekle():
         flash(f"⏳ {secilen_tarih_str} tarihli kayıt talebiniz ana kullanıcının onayına gönderildi.", "success")
         return redirect(url_for("odalar", tarih=secilen_tarih_str))
 
-    # ADMIN VEYA BUGÜNÜN TARİHİ İSE -> DİREKT KAYDET
     k = Kayit(oda_no=request.form["oda"], musteri_adi=request.form.get("musteri_adi", ""), 
               toplam_tutar=toplam, odenen=odenen, tip=request.form["tip"], 
               personel=session.get("username"), kilitli=True, notlar=request.form.get("notlar", ""),
               tarih=kayit_tarihi)
     db.session.add(k); db.session.commit()
     log_yaz("KAYIT EKLE", f"{k.oda_no} - {toplam} (Tarih: {kayit_tarihi.strftime('%Y-%m-%d')})")
-    flash(f"✅ {k.oda_no} → {toplam} TL kaydedildi. Tarih: {kayit_tarihi.strftime('%d.%m.%Y')}", "success")
+    flash(f"✅ {k.oda_no} → {toplam} TL kaydedildi.", "success")
     return redirect(url_for("odalar", tarih=secilen_tarih_str))
 
 @app.route("/kayit_sil/<int:kid>")
@@ -402,7 +400,7 @@ def init_db():
     with app.app_context():
         db.create_all()
         
-        # VERİTABANI OTOMATİK GÜNCELLEME (Eski veriler silinmez, yeni sütunlar eklenir)
+        # VERİTABANI OTOMATİK GÜNCELLEME (Eski veriler silinmez, yeni sütunlar zorla eklenir)
         from sqlalchemy import text
         try:
             db.session.execute(text("ALTER TABLE personel ADD COLUMN maas_gunu INTEGER DEFAULT 1"))
