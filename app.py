@@ -4,7 +4,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from openpyxl import Workbook
 import io, os
-# Kalıcı disk klasörü yoksa otomatik oluştur (502 hatasını çözer)
+
 os.makedirs("/var/data", exist_ok=True)
 
 app = Flask(__name__)
@@ -55,6 +55,7 @@ class Personel(db.Model):
     gorev = db.Column(db.String(50), default="Genel")
     maas = db.Column(db.Float, default=0)
     ise_giris = db.Column(db.DateTime, default=datetime.now)
+    maas_gunu = db.Column(db.Integer, default=1) # Ayın kaçında maaş alıyor
     avanslar = db.relationship('Avans', backref='personel', lazy=True)
 
 class Avans(db.Model):
@@ -141,7 +142,6 @@ def logout():
 @giris_gerek
 def index(): return redirect(url_for("odalar"))
 
-# TAKVİM MANTIĞI EKLENDİ
 @app.route("/odalar")
 @giris_gerek
 def odalar():
@@ -160,12 +160,27 @@ def kayit_ekle():
     if odenen > toplam:
         flash("Ödenen tutar toplamdan büyük olamaz!", "danger"); return redirect(url_for("odalar"))
     
-    kayit_tarihi = datetime.now()
-    secilen_tarih = request.form.get("kayit_tarihi")
-    if admin_mi() and secilen_tarih:
-        try: kayit_tarihi = datetime.strptime(secilen_tarih, "%Y-%m-%d")
-        except: pass
+    secilen_tarih_str = request.form.get("kayit_tarihi")
+    bugun_str = datetime.now().strftime("%Y-%m-%d")
+    if not secilen_tarih_str: secilen_tarih_str = bugun_str
 
+    kayit_tarihi = datetime.now()
+    try: kayit_tarihi = datetime.strptime(secilen_tarih_str, "%Y-%m-%d")
+    except: pass
+
+    # RESEPSİYON GEÇMİŞ VEYA GELECEK TARİH SEÇTİYSE -> TALEP OLUŞTUR
+    if not admin_mi() and secilen_tarih_str != bugun_str:
+        t = Talep(talep_tipi="yeni_kayit", oda_no=request.form["oda"], 
+                  musteri_adi=request.form.get("musteri_adi", ""), 
+                  toplam_tutar=toplam, odenen=odenen, tip=request.form["tip"], 
+                  notlar=request.form.get("notlar", ""), tarih_str=secilen_tarih_str, 
+                  sebep="Farklı tarihli kayıt isteği", personel=session.get("username"))
+        db.session.add(t); db.session.commit()
+        log_yaz("GECMIS KAYIT TALEBI", f"{t.oda_no} - {toplam} TL - Tarih: {secilen_tarih_str}")
+        flash(f"⏳ {secilen_tarih_str} tarihli kayıt talebiniz ana kullanıcının onayına gönderildi.", "success")
+        return redirect(url_for("odalar", tarih=secilen_tarih_str))
+
+    # ADMIN VEYA BUGÜNÜN TARİHİ İSE -> DİREKT KAYDET
     k = Kayit(oda_no=request.form["oda"], musteri_adi=request.form.get("musteri_adi", ""), 
               toplam_tutar=toplam, odenen=odenen, tip=request.form["tip"], 
               personel=session.get("username"), kilitli=True, notlar=request.form.get("notlar", ""),
@@ -173,7 +188,7 @@ def kayit_ekle():
     db.session.add(k); db.session.commit()
     log_yaz("KAYIT EKLE", f"{k.oda_no} - {toplam} (Tarih: {kayit_tarihi.strftime('%Y-%m-%d')})")
     flash(f"✅ {k.oda_no} → {toplam} TL kaydedildi. Tarih: {kayit_tarihi.strftime('%d.%m.%Y')}", "success")
-    return redirect(url_for("odalar", tarih=secilen_tarih or datetime.now().strftime("%Y-%m-%d")))
+    return redirect(url_for("odalar", tarih=secilen_tarih_str))
 
 @app.route("/kayit_sil/<int:kid>")
 @giris_gerek
@@ -181,20 +196,6 @@ def kayit_sil(kid):
     if not admin_mi(): flash("Yetkiniz yok!", "danger"); return redirect(url_for("odalar"))
     k = Kayit.query.get_or_404(kid); tarih = k.tarih.strftime("%Y-%m-%d"); db.session.delete(k); db.session.commit()
     log_yaz("KAYIT SIL", f"ID {kid}"); flash("Kayıt silindi.", "success"); return redirect(url_for("odalar", tarih=tarih))
-
-@app.route("/gecmis_kayit_talebi", methods=["POST"])
-@giris_gerek
-def gecmis_kayit_talebi():
-    try:
-        toplam = float(request.form["toplam_tutar"].replace(",", ".")); odenen = float(request.form.get("odenen", "0").replace(",", ".") or 0)
-    except:
-        flash("Geçerli tutar girin!", "danger"); return redirect(url_for("odalar"))
-    tarih_str = request.form.get("tarih")
-    if not tarih_str: flash("Lütfen bir tarih seçin!", "danger"); return redirect(url_for("odalar"))
-    t = Talep(talep_tipi="yeni_kayit", oda_no=request.form["oda"], musteri_adi=request.form.get("musteri_adi", ""), toplam_tutar=toplam, odenen=odenen, tip=request.form["tip"], notlar=request.form.get("notlar", ""), tarih_str=tarih_str, sebep=request.form.get("sebep", "Geçmiş tarihli kayıt"), personel=session.get("username"))
-    db.session.add(t); db.session.commit()
-    log_yaz("GECMIS KAYIT TALEBI", f"{t.oda_no} - {toplam} TL - Tarih: {tarih_str}")
-    flash("✅ Talep ana kullanıcıya gönderildi.", "success"); return redirect(url_for("odalar"))
 
 @app.route("/talep_gonder/<int:kid>", methods=["POST"])
 @giris_gerek
@@ -206,19 +207,43 @@ def talep_gonder(kid):
     if not sebep: flash("Sebep zorunlu!", "danger"); return redirect(url_for("odalar"))
     t = Talep(kayit_id=kid, oda_no=k.oda_no, eski_tutar=k.toplam_tutar, yeni_tutar=yeni, sebep=sebep, personel=session.get("username"))
     db.session.add(t); db.session.commit()
-    log_yaz("TALEP", f"{k.oda_no} {k.toplam_tutar}->{yeni}"); flash("✅ Talep gönderildi.", "success"); return redirect(url_for("odalar"))
+    log_yaz("TALEP", f"{k.oda_no} {k.toplam_tutar}->{yeni}"); flash("✅ Talep gönderildi.", "success"); return redirect(url_for("odalar", tarih=k.tarih.strftime("%Y-%m-%d")))
 
+# ============ GİDERLER (TAKVİMLİ VE SİLİNEBİLİR) ============
 @app.route("/giderler")
 @giris_gerek
-def giderler(): return render_template("giderler.html", giderler=Gider.query.order_by(Gider.tarih.desc()).all())
+def giderler():
+    secili_tarih = request.args.get("tarih", datetime.now().strftime("%Y-%m-%d"))
+    giderler_list = Gider.query.filter(Gider.tarih.like(f"{secili_tarih}%")).order_by(Gider.tarih.desc()).all()
+    return render_template("giderler.html", giderler=giderler_list, secili_tarih=secili_tarih, admin=admin_mi())
 
 @app.route("/gider_ekle", methods=["POST"])
 @giris_gerek
 def gider_ekle():
     try: t = float(request.form["tutar"].replace(",", "."))
     except: flash("Geçerli tutar!", "danger"); return redirect(url_for("giderler"))
-    db.session.add(Gider(aciklama=request.form["aciklama"], tutar=t, personel=session.get("username")))
-    db.session.commit(); log_yaz("GIDER", f"{request.form['aciklama']} - {t} TL"); flash("Gider eklendi.", "success"); return redirect(url_for("giderler"))
+    
+    secilen_tarih = request.form.get("tarih")
+    gider_tarihi = datetime.now()
+    if secilen_tarih:
+        try: gider_tarihi = datetime.strptime(secilen_tarih, "%Y-%m-%d")
+        except: pass
+
+    db.session.add(Gider(aciklama=request.form["aciklama"], tutar=t, personel=session.get("username"), tarih=gider_tarihi))
+    db.session.commit(); 
+    log_yaz("GIDER", f"{request.form['aciklama']} - {t} TL (Tarih: {gider_tarihi.strftime('%Y-%m-%d')})"); 
+    flash(f"✅ Gider eklendi. Tarih: {gider_tarihi.strftime('%d.%m.%Y')}", "success"); 
+    return redirect(url_for("giderler", tarih=secilen_tarih or datetime.now().strftime("%Y-%m-%d")))
+
+@app.route("/gider_sil/<int:gid>")
+@giris_gerek
+def gider_sil(gid):
+    if not admin_mi(): flash("Yetkiniz yok!", "danger"); return redirect(url_for("giderler"))
+    g = Gider.query.get_or_404(gid)
+    tarih = g.tarih.strftime("%Y-%m-%d")
+    db.session.delete(g); db.session.commit()
+    log_yaz("GIDER SIL", f"ID {gid}"); flash("Gider silindi.", "success")
+    return redirect(url_for("giderler", tarih=tarih))
 
 @app.route("/borclular")
 @giris_gerek
@@ -241,6 +266,7 @@ def odeme_al(kid):
 @giris_gerek
 def odeme_gecmisi(kid): return render_template("odeme_gecmisi.html", kayit=Kayit.query.get_or_404(kid), odemeler=Odeme.query.filter_by(kayit_id=kid).order_by(Odeme.tarih.desc()).all())
 
+# ============ PERSONEL VE MAAŞ (TARİHLİ) ============
 @app.route("/personel", methods=["GET", "POST"])
 @giris_gerek
 def personel():
@@ -248,7 +274,13 @@ def personel():
     if request.method == "POST":
         try: maas = float(request.form["maas"].replace(",", "."))
         except: maas = 0
-        db.session.add(Personel(ad_soyad=request.form["ad_soyad"], gorev=request.form["gorev"], maas=maas)); db.session.commit(); flash("Personel eklendi.", "success"); return redirect(url_for("personel"))
+        try: ise_giris_tarihi = datetime.strptime(request.form["ise_giris"], "%Y-%m-%d")
+        except: ise_giris_tarihi = datetime.now()
+        try: maas_gunu = int(request.form["maas_gunu"])
+        except: maas_gunu = 1
+        
+        db.session.add(Personel(ad_soyad=request.form["ad_soyad"], gorev=request.form["gorev"], maas=maas, ise_giris=ise_giris_tarihi, maas_gunu=maas_gunu))
+        db.session.commit(); flash("Personel eklendi.", "success"); return redirect(url_for("personel"))
     return render_template("personel.html", personeller=Personel.query.all())
 
 @app.route("/avans_ver/<int:pid>", methods=["POST"])
