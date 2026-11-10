@@ -23,8 +23,9 @@
     <td><b>{{ p.ad_soyad }}</b></td>
     <td>{{ p.gorev }}</td>
     <td>{{ "%.2f"|format(p.maas) }} TL</td>
-    <td>{{ p.ise_giris.strftime("%d.%m.%Y") }}</td>
-    <td>Her ayın <b>{{ p.maas_gunu }}</b>.</td>
+    <!-- Tarih boşsa sistem çökmesin diye kontrol eklendi -->
+    <td>{{ p.ise_giris.strftime("%d.%m.%Y") if p.ise_giris else "-" }}</td>
+    <td>Her ayın <b>{{ p.maas_gunu if p.maas_gunu else "1" }}</b>.</td>
     <td style="color:#dc2626;">{{ "%.2f"|format(toplam_avans) }} TL</td>
     <td><b style="color:#16a34a; font-size:16px;">{{ "%.2f"|format(kalan) }} TL</b></td>
     <td>
