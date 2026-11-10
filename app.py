@@ -55,7 +55,7 @@ class Personel(db.Model):
     gorev = db.Column(db.String(50), default="Genel")
     maas = db.Column(db.Float, default=0)
     ise_giris = db.Column(db.DateTime, default=datetime.now)
-    maas_gunu = db.Column(db.Integer, default=1) # Ayın kaçında maaş alıyor
+    maas_gunu = db.Column(db.Integer, default=1) 
     avanslar = db.relationship('Avans', backref='personel', lazy=True)
 
 class Avans(db.Model):
@@ -209,7 +209,6 @@ def talep_gonder(kid):
     db.session.add(t); db.session.commit()
     log_yaz("TALEP", f"{k.oda_no} {k.toplam_tutar}->{yeni}"); flash("✅ Talep gönderildi.", "success"); return redirect(url_for("odalar", tarih=k.tarih.strftime("%Y-%m-%d")))
 
-# ============ GİDERLER (TAKVİMLİ VE SİLİNEBİLİR) ============
 @app.route("/giderler")
 @giris_gerek
 def giderler():
@@ -222,17 +221,15 @@ def giderler():
 def gider_ekle():
     try: t = float(request.form["tutar"].replace(",", "."))
     except: flash("Geçerli tutar!", "danger"); return redirect(url_for("giderler"))
-    
     secilen_tarih = request.form.get("tarih")
     gider_tarihi = datetime.now()
     if secilen_tarih:
         try: gider_tarihi = datetime.strptime(secilen_tarih, "%Y-%m-%d")
         except: pass
-
     db.session.add(Gider(aciklama=request.form["aciklama"], tutar=t, personel=session.get("username"), tarih=gider_tarihi))
     db.session.commit(); 
-    log_yaz("GIDER", f"{request.form['aciklama']} - {t} TL (Tarih: {gider_tarihi.strftime('%Y-%m-%d')})"); 
-    flash(f"✅ Gider eklendi. Tarih: {gider_tarihi.strftime('%d.%m.%Y')}", "success"); 
+    log_yaz("GIDER", f"{request.form['aciklama']} - {t} TL"); 
+    flash(f"✅ Gider eklendi.", "success"); 
     return redirect(url_for("giderler", tarih=secilen_tarih or datetime.now().strftime("%Y-%m-%d")))
 
 @app.route("/gider_sil/<int:gid>")
@@ -260,13 +257,12 @@ def odeme_al(kid):
     if tutar <= 0 or tutar > k.kalan + 0.01: flash("Tutar geçersiz veya kalan borçtan büyük!", "danger"); return redirect(url_for("borclular"))
     odeme = Odeme(kayit_id=k.id, tutar=tutar, tip=request.form.get("tip", "Nakit"), personel=session.get("username"), aciklama=request.form.get("aciklama", ""))
     k.odenen += tutar; db.session.add(odeme); db.session.commit()
-    log_yaz("ODEME AL", f"{k.oda_no} - {tutar} TL (kalan: {k.kalan} TL)"); flash(f"✅ {k.oda_no} → {tutar} TL ödeme alındı.", "success"); return redirect(url_for("borclular"))
+    log_yaz("ODEME AL", f"{k.oda_no} - {tutar} TL"); flash(f"✅ {k.oda_no} → {tutar} TL ödeme alındı.", "success"); return redirect(url_for("borclular"))
 
 @app.route("/odeme_gecmisi/<int:kid>")
 @giris_gerek
 def odeme_gecmisi(kid): return render_template("odeme_gecmisi.html", kayit=Kayit.query.get_or_404(kid), odemeler=Odeme.query.filter_by(kayit_id=kid).order_by(Odeme.tarih.desc()).all())
 
-# ============ PERSONEL VE MAAŞ (TARİHLİ) ============
 @app.route("/personel", methods=["GET", "POST"])
 @giris_gerek
 def personel():
@@ -278,7 +274,6 @@ def personel():
         except: ise_giris_tarihi = datetime.now()
         try: maas_gunu = int(request.form["maas_gunu"])
         except: maas_gunu = 1
-        
         db.session.add(Personel(ad_soyad=request.form["ad_soyad"], gorev=request.form["gorev"], maas=maas, ise_giris=ise_giris_tarihi, maas_gunu=maas_gunu))
         db.session.commit(); flash("Personel eklendi.", "success"); return redirect(url_for("personel"))
     return render_template("personel.html", personeller=Personel.query.all())
@@ -406,6 +401,19 @@ def loglar():
 def init_db():
     with app.app_context():
         db.create_all()
+        
+        # VERİTABANI OTOMATİK GÜNCELLEME (Eski veriler silinmez, yeni sütunlar eklenir)
+        from sqlalchemy import text
+        try:
+            db.session.execute(text("ALTER TABLE personel ADD COLUMN maas_gunu INTEGER DEFAULT 1"))
+            db.session.commit()
+        except: db.session.rollback()
+        
+        try:
+            db.session.execute(text("ALTER TABLE personel ADD COLUMN ise_giris DATETIME"))
+            db.session.commit()
+        except: db.session.rollback()
+
         if not User.query.filter_by(username="admin").first():
             db.session.add(User(username="admin", password_hash=generate_password_hash("1234"), full_name="Otel Yöneticisi", role="admin"))
             db.session.add(User(username="resepsiyon", password_hash=generate_password_hash("1234"), full_name="Resepsiyon", role="resepsiyon"))
